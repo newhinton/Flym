@@ -19,9 +19,12 @@ package net.frju.flym.ui.entries
 
 import android.annotation.SuppressLint
 import android.arch.paging.PagedListAdapter
+import android.content.Intent
+import android.support.v4.content.ContextCompat.startActivity
 import android.support.v7.util.DiffUtil
 import android.support.v7.widget.RecyclerView
 import android.text.TextUtils
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -30,14 +33,19 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withC
 import com.bumptech.glide.request.transition.DrawableCrossFadeFactory
 import kotlinx.android.synthetic.main.view_entry.view.*
 import net.fred.feedex.R
+import net.frju.flym.App
 import net.frju.flym.GlideApp
 import net.frju.flym.data.entities.EntryWithFeed
 import net.frju.flym.data.entities.Feed
 import net.frju.flym.service.FetcherService
+import net.frju.flym.ui.entrydetails.EntryDetailsActivity
+import net.frju.flym.ui.entrydetails.EntryDetailsFragment
+import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.sdk21.listeners.onClick
+import org.jetbrains.anko.startActivity
 
 
-class EntryAdapter(private val globalClickListener: (EntryWithFeed) -> Unit, private val favoriteClickListener: (EntryWithFeed, ImageView) -> Unit) : PagedListAdapter<EntryWithFeed, EntryAdapter.ViewHolder>(DIFF_CALLBACK) {
+class EntryAdapter(private val globalClickListener: (EntryWithFeed) -> Unit, private val longClickOpenInDetailsView: Boolean, private val favoriteClickListener: (EntryWithFeed, ImageView) -> Unit) : PagedListAdapter<EntryWithFeed, EntryAdapter.ViewHolder>(DIFF_CALLBACK) {
 
     companion object {
 
@@ -57,7 +65,7 @@ class EntryAdapter(private val globalClickListener: (EntryWithFeed) -> Unit, pri
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         @SuppressLint("SetTextI18n")
-        fun bind(entryWithFeed: EntryWithFeed, globalClickListener: (EntryWithFeed) -> Unit, favoriteClickListener: (EntryWithFeed, ImageView) -> Unit) = with(itemView) {
+        fun bind(entryWithFeed: EntryWithFeed, globalClickListener: (EntryWithFeed) -> Unit, favoriteClickListener: (EntryWithFeed, ImageView) -> Unit, longClickOpenInDetailsView: Boolean) = with(itemView) {
             val mainImgUrl = if (TextUtils.isEmpty(entryWithFeed.entry.imageLink)) null else FetcherService.getDownloadedOrDistantImageUrl(entryWithFeed.entry.id, entryWithFeed.entry.imageLink!!)
 
             val letterDrawable = Feed.getLetterDrawable(entryWithFeed.entry.feedId, entryWithFeed.feedTitle)
@@ -67,6 +75,20 @@ class EntryAdapter(private val globalClickListener: (EntryWithFeed) -> Unit, pri
                 GlideApp.with(context).clear(main_icon)
                 main_icon.setImageDrawable(letterDrawable)
             }
+
+            if (longClickOpenInDetailsView) {
+                entry_container.setOnLongClickListener{
+                    doAsync {
+                        App.db.entryDao().findByIdWithFeed(entryWithFeed.entry.id)?.entry?.link?.let { url ->
+                            //Toast.makeText(context, url, Toast.LENGTH_SHORT).show()
+                            App.db.entryDao().markAsRead(listOf(entryWithFeed.entry.id))
+                            Log.v("myapp", url)
+                            }
+                    }
+                    true
+                }
+            }
+
 
             title.isEnabled = !entryWithFeed.entry.read
             title.text = entryWithFeed.entry.title
@@ -100,7 +122,7 @@ class EntryAdapter(private val globalClickListener: (EntryWithFeed) -> Unit, pri
     override fun onBindViewHolder(holder: EntryAdapter.ViewHolder, position: Int) {
         val entryWithFeed = getItem(position)
         if (entryWithFeed != null) {
-            holder.bind(entryWithFeed, globalClickListener, favoriteClickListener)
+            holder.bind(entryWithFeed, globalClickListener, favoriteClickListener, longClickOpenInDetailsView)
         } else {
             // Null defines a placeholder item - PagedListAdapter will automatically invalidate
             // this row when the actual object is loaded from the database

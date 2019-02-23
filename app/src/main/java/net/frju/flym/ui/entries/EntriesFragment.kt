@@ -51,6 +51,7 @@ import org.jetbrains.anko.*
 import org.jetbrains.anko.appcompat.v7.titleResource
 import org.jetbrains.anko.design.longSnackbar
 import org.jetbrains.anko.sdk21.listeners.onClick
+import org.jetbrains.anko.support.v4.defaultSharedPreferences
 import org.jetbrains.anko.support.v4.dip
 import org.jetbrains.anko.support.v4.share
 import q.rorbin.badgeview.Badge
@@ -89,9 +90,10 @@ class EntriesFragment : Fragment() {
 
 	private val adapter = EntryAdapter({ entryWithFeed ->
 		navigator.goToEntryDetails(entryWithFeed.entry.id, entryIds!!)
-	}, { entryWithFeed, view ->
+	},true,
+	//},defaultSharedPreferences.getBoolean(PrefConstants.OPEN_BROWSER_DIRECTLY, false),
+			{ entryWithFeed, view ->
 		entryWithFeed.entry.favorite = !entryWithFeed.entry.favorite
-
 		view.favorite_icon?.let {
 			if (entryWithFeed.entry.favorite) {
 				it.setImageResource(R.drawable.ic_star_24dp)
